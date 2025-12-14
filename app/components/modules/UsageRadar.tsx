@@ -76,7 +76,7 @@ export const UsageRadar = () => {
                                         </div>
                                         <div>
                                             <h4 className="font-bold text-gray-900">{card.area}</h4>
-                                            <p className="text-xs text-gray-500">{card.total_items} Total Items</p>
+                                            <p className="text-xs text-gray-500"><span className="font-bold text-indigo-600">{card.total_items}</span> Total Items</p>
                                         </div>
                                     </div>
                                 </div>
