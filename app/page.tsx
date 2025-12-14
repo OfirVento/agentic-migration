@@ -223,7 +223,14 @@ const ChatArea = () => {
             {msg.actions.map((action, idx) => (
               <button
                 key={idx}
-                onClick={() => transitionTo(action.next_state || '')}
+                onClick={() => {
+                  if (action.next_state) {
+                    transitionTo(action.next_state);
+                  } else if (action.effect === 'toast') {
+                    // Show a toast/alert for non-navigation actions
+                    alert(`${action.label} - This feature is coming soon!`);
+                  }
+                }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-xs font-medium text-gray-700 hover:bg-gray-100 hover:border-gray-300 transition-all group shadow-sm"
               >
                 {action.label}
