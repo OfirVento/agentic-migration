@@ -76,7 +76,7 @@ export const UsageRadar = () => {
                                         </div>
                                         <div>
                                             <h4 className="font-bold text-gray-900">{card.area}</h4>
-                                            <p className="text-xs text-gray-500">{card.active_items} of {card.total_items} Total Items</p>
+                                            <p className="text-xs text-gray-500">{card.total_items} Total Items</p>
                                         </div>
                                     </div>
                                 </div>
@@ -100,8 +100,8 @@ export const UsageRadar = () => {
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs text-gray-500 font-medium">USAGE COVERAGE</span>
                                         <div className="flex items-center gap-1">
-                                            <span className="text-sm font-bold text-indigo-600">{card.usage_coverage}</span>
-                                            <span className="text-xs text-gray-400">of total volume</span>
+                                            <span className="text-sm font-bold text-indigo-600">{card.active_items}</span>
+                                            <span className="text-xs text-gray-400">of total items</span>
                                         </div>
                                     </div>
 
