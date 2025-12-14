@@ -303,7 +303,7 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
                     "Org Scanner Agent", "assistant",
                     "Scan complete. I found 14 active CPQ artifacts. The 'Usage Radar' shows that 62% of your quote volume relies on just 5 complex Price Rules. We should migrate those first.",
                     [
-                        { label: "View Inventory Health", action_id: "view_health", next_state: "S4" }
+                        { label: "Analyze Dependencies", action_id: "view_deps", next_state: "S5" }
                     ]
                 );
                 setCurrentCanvas({
