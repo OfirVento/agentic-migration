@@ -5,6 +5,16 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 
 export type AgentRole = 'system' | 'assistant' | 'user';
 
+export interface Blocker {
+    id: string;
+    agent: string;
+    question: string;
+    options: string[];
+    status: 'open' | 'resolved';
+    resolution?: string;
+    timestamp: number;
+}
+
 export interface ActionButton {
     label: string;
     action_id: string;
@@ -108,6 +118,9 @@ interface DemoContextType {
     // --- Expert Tools ---
     expertOutputs: { id: string, title: string, time: string }[];
     handleExpertAction: (action: string) => void;
+    // --- Blocker System ---
+    blockers: Blocker[];
+    resolveBlocker: (id: string, option: string) => void;
 }
 
 // --- Seed Data ---
@@ -139,6 +152,7 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
     const [isTyping, setIsTyping] = useState(false);
     const [typingLabel, setTypingLabel] = useState<string | null>(null);
     const [expertOutputs, setExpertOutputs] = useState<{ id: string, title: string, time: string }[]>([]);
+    const [blockers, setBlockers] = useState<Blocker[]>([]);
 
     // Helper to add message with typing delay
     const addAgentMessage = (agentName: string, role: AgentRole, content: string, actions?: ActionButton[], meta?: any, reasoning?: string[], avatar?: string) => {
@@ -202,6 +216,36 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
                 console.log(successMsg);
             }
         }, 1500);
+
+        // Simulation for Blocker (Hidden Trigger)
+        if (action === 'simulate_blocker') {
+            setTimeout(() => {
+                setBlockers(prev => [...prev, {
+                    id: Date.now().toString(),
+                    agent: "Logic Translator Agent",
+                    question: "I found a dependency on an external API 'LegacyPricingService' in the 'Volume Discount' rule. I cannot migrate this logic automatically. How should I proceed?",
+                    options: [
+                        "Mock the service response (Standard)",
+                        "Map as 'Manual Task' for later",
+                        "Wait for developer input"
+                    ],
+                    status: 'open',
+                    timestamp: Date.now()
+                }]);
+            }, 500);
+        }
+    };
+
+    const resolveBlocker = (id: string, option: string) => {
+        setBlockers(prev => prev.map(b =>
+            b.id === id ? { ...b, status: 'resolved', resolution: option } : b
+        ));
+
+        // Log to chat
+        addAgentMessage(
+            "System", "system",
+            `Blocker resolved: Selected "${option}". Resuming execution...`
+        );
     };
 
     // Helper for multi-agent sequences
@@ -1138,7 +1182,7 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
     }, []);
 
     return (
-        <DemoContext.Provider value={{ currentState, chatHistory, currentCanvas, mission, handleAction, handleUserMessage, transitionTo, currentTask, isTyping, typingLabel, expertOutputs, handleExpertAction }}>
+        <DemoContext.Provider value={{ currentState, chatHistory, currentCanvas, mission, handleAction, handleUserMessage, transitionTo, currentTask, isTyping, typingLabel, expertOutputs, handleExpertAction, blockers, resolveBlocker }}>
             {children}
         </DemoContext.Provider>
     );

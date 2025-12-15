@@ -1,6 +1,9 @@
 "use client";
 import React, { ReactNode } from 'react';
 import { MissionBar } from './MissionBar';
+import { ClarificationInbox } from './ClarificationInbox';
+import { useDemo } from './DemoContext';
+import { MessageCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface AppShellProps {
@@ -12,15 +15,27 @@ interface AppShellProps {
 }
 
 export const AppShell = ({ chat, canvas, children, title, subtitle }: AppShellProps) => {
+    const { blockers, resolveBlocker, handleExpertAction } = useDemo();
+
     return (
         <div className="flex flex-col h-screen overflow-hidden bg-gray-50">
             <MissionBar />
 
             {/* Page Header (Optional) */}
             {title && (
-                <div className="px-8 py-6 pb-0 shrink-0">
-                    <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-                    {subtitle && <p className="text-gray-500 mt-1">{subtitle}</p>}
+                <div className="px-8 py-6 pb-0 shrink-0 flex justify-between items-end">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+                        {subtitle && <p className="text-gray-500 mt-1">{subtitle}</p>}
+                    </div>
+                    {/* Debug Trigger for Blocker Simulation */}
+                    <button
+                        onClick={() => handleExpertAction('simulate_blocker')}
+                        className="text-xs text-gray-300 hover:text-gray-500 transition-colors"
+                        title="Debug: Simulate Blocker"
+                    >
+                        <MessageCircle size={16} />
+                    </button>
                 </div>
             )}
 
@@ -45,6 +60,9 @@ export const AppShell = ({ chat, canvas, children, title, subtitle }: AppShellPr
                     </>
                 )}
             </div>
+
+            {/* Global Overlay: Clarification Inbox */}
+            <ClarificationInbox blockers={blockers} onResolve={resolveBlocker} />
         </div>
     );
 };
