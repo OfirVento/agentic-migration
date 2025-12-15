@@ -24,6 +24,12 @@ interface ScopeItem {
         rows: string[][];
     };
     rcaConfig?: string; // Kept optional for backward compatibility
+    isVerified?: boolean;
+    manualOverride?: {
+        active: boolean;
+        type: 'rebuild' | 'map-as-is';
+        notes: string;
+    };
 }
 
 export const TranslationCanvas = () => {
