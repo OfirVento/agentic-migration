@@ -60,61 +60,61 @@ export const UsageRadar = () => {
                 ))}
             </div>
 
-            {/* Area Cards */}
+            {/* Area List (Consolidated Inventory & Health) */}
             <div>
                 <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3">Inventory & Health</h3>
                 <p className="text-xs text-gray-500 mb-4">Active components prioritized by usage coverage.</p>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-4">
                     {data.summary.area_cards.map((card: any, idx: number) => {
                         const Icon = getIcon(card.icon);
                         return (
-                            <div key={idx} className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                                <div className="flex items-start justify-between mb-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 rounded-lg bg-gray-100">
-                                            <Icon size={20} className="text-gray-600" />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-gray-900">{card.area}</h4>
-                                            <p className="text-xs text-gray-500"><span className="font-bold text-indigo-600">{card.total_items}</span> Total Items</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-3">
-                                    {/* Active % */}
-                                    <div>
-                                        <div className="flex items-center justify-between text-xs mb-1">
-                                            <span className="text-gray-500 font-medium">ACTIVE</span>
-                                            <span className="font-bold text-gray-900">{card.active_percent}%</span>
-                                        </div>
-                                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full bg-green-500 rounded-full transition-all"
-                                                style={{ width: `${card.active_percent}%` }}
-                                            />
-                                        </div>
+                            <div key={idx} className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:border-indigo-300 transition-all group">
+                                <div className="flex items-start gap-4">
+                                    <div className="p-3 bg-indigo-50 rounded-lg text-indigo-600 shrink-0">
+                                        <Icon size={24} />
                                     </div>
 
-                                    {/* Usage Coverage */}
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-xs text-gray-500 font-medium">USAGE COVERAGE</span>
-                                        <div className="flex items-center gap-1">
-                                            <span className="text-sm font-bold text-indigo-600">{card.active_items}</span>
-                                            <span className="text-xs text-gray-400">of total items</span>
+                                    <div className="flex-1 grid grid-cols-12 gap-4 items-center">
+                                        {/* Setup Context */}
+                                        <div className="col-span-4">
+                                            <h4 className="font-bold text-gray-900 text-base">{card.area}</h4>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-xs text-gray-500"><span className="font-semibold text-gray-900">{card.total_items}</span> Total Items</span>
+                                                <span className="w-1 h-1 rounded-full bg-gray-300" />
+                                                <span className="text-xs text-gray-500 italic">"{card.insight}"</span>
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    {/* Insight + View Details */}
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-xs text-gray-600 italic">"{card.insight}"</p>
-                                        <button
-                                            onClick={() => setActiveTab(card.link_to_tab)}
-                                            className="text-xs text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1 group shrink-0 ml-2"
-                                        >
-                                            View details
-                                            <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
-                                        </button>
+                                        {/* Progress Bar */}
+                                        <div className="col-span-3 flex flex-col justify-center">
+                                            <div className="flex justify-between text-xs mb-1.5">
+                                                <span className="font-semibold text-gray-500 uppercase">Active</span>
+                                                <span className="font-bold text-gray-900">{card.active_percent}%</span>
+                                            </div>
+                                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-green-500 rounded-full transition-all group-hover:bg-green-600"
+                                                    style={{ width: `${card.active_percent}%` }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Usage Stat */}
+                                        <div className="col-span-3 pl-4 border-l border-gray-100">
+                                            <div className="text-xs font-semibold text-gray-400 uppercase">Usage Coverage</div>
+                                            <div className="text-lg font-bold text-indigo-600">{card.usage_coverage}</div>
+                                            <div className="text-[10px] text-gray-400">of total volume</div>
+                                        </div>
+
+                                        {/* Action */}
+                                        <div className="col-span-2 flex justify-end">
+                                            <button
+                                                onClick={() => setActiveTab(card.link_to_tab)}
+                                                className="px-3 py-2 rounded-lg bg-gray-50 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors flex items-center gap-1"
+                                            >
+                                                Details <ArrowRight size={12} />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

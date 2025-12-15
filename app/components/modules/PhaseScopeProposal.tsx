@@ -39,12 +39,25 @@ export const PhaseScopeProposal = () => {
                 <div className="space-y-4 mb-8">
                     <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Included in Scope</h3>
                     {data.included.map((item: any, idx: number) => (
-                        <div key={idx} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4 hover:border-purple-300 transition-all">
-                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500 text-sm">
-                                {idx + 1}
+                        <div
+                            key={idx}
+                            onClick={() => handleAction('toggle_scope_item', { id: item.id })}
+                            className={cn(
+                                "bg-white p-4 rounded-xl border shadow-sm flex items-center gap-4 transition-all cursor-pointer group",
+                                item.isSelected ? "border-purple-200 shadow-sm" : "border-gray-200 opacity-60 bg-gray-50"
+                            )}
+                        >
+                            <div className={cn(
+                                "w-6 h-6 rounded border flex items-center justify-center transition-colors",
+                                item.isSelected ? "bg-purple-600 border-purple-600" : "bg-white border-gray-300 group-hover:border-purple-400"
+                            )}>
+                                {item.isSelected && <CheckCircle2 size={16} className="text-white" />}
                             </div>
+
                             <div className="flex-1">
-                                <div className="font-semibold text-gray-900">{item.item}</div>
+                                <div className={cn("font-semibold text-gray-900", !item.isSelected && "text-gray-500 line-through decoration-gray-300")}>
+                                    {item.item}
+                                </div>
                                 <div className="text-sm text-gray-500">{item.usage}</div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -62,9 +75,11 @@ export const PhaseScopeProposal = () => {
                 <div className="flex gap-4 border-t pt-6">
                     <button
                         onClick={() => handleAction('approve_scope')}
-                        className="flex-1 py-3 bg-purple-600 text-white rounded-xl font-bold shadow hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+                        disabled={data.included.filter((i: any) => i.isSelected).length === 0}
+                        className="flex-1 py-3 bg-purple-600 text-white rounded-xl font-bold shadow hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        <CheckCircle2 size={20} /> Approve Phase 1 Scope
+                        <CheckCircle2 size={20} />
+                        Approve Scope ({data.included.filter((i: any) => i.isSelected).length})
                     </button>
                 </div>
 

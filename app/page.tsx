@@ -248,14 +248,11 @@ const ChatArea = () => {
       {/* Messages List */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth">
 
-        {/* 1. Render messages that happened BEFORE the current task started (or all if no task) */}
-        {chatHistory.filter(m => !currentTask || m.timestamp <= currentTask.startTime).map(renderMessage)}
+        {/* 1. Render all messages */}
+        {chatHistory.map(renderMessage)}
 
-        {/* 2. Render the Active Task Card Inline */}
+        {/* 2. Render the Active Task Card at the bottom */}
         {currentTask && <TaskCard task={currentTask} />}
-
-        {/* 3. Render messages that happened AFTER the task started (e.g. completion message) */}
-        {chatHistory.filter(m => currentTask && m.timestamp > currentTask.startTime).map(renderMessage)}
 
         {isTyping && <ThinkingBubble label={typingLabel || "Thinking..."} />}
         <div ref={bottomRef} />

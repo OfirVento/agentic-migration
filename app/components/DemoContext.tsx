@@ -48,6 +48,44 @@ export interface CanvasState {
     data: any;
 }
 
+// --- Types ---
+
+export interface ScopeItem {
+    id: string; // Added ID for selection tracking
+    item: string; // Display Name
+    usage: string;
+    steps: string[];
+    isSelected?: boolean; // New for Granular Scope
+}
+
+export interface TranslationItem {
+    id: string;
+    title: string;
+    usage: string;
+    translationType: 'rebuild' | 'map-as-is';
+    inputs: string[];
+    behavior: string[];
+    evidence: string[];
+    rcaApproach: string;
+    rcaDetails: string[];
+    simpleExplanation?: string;
+    migrationVisual?: 'script_to_standard' | 'code_to_template';
+    pros?: string[];
+    cons?: string[];
+    parameterPreview?: {
+        columns: string[];
+        rows: string[][];
+    };
+    rcaConfig?: string;
+    // New Expert Control Fields
+    isVerified?: boolean;
+    manualOverride?: {
+        active: boolean;
+        type: 'rebuild' | 'map-as-is';
+        notes: string;
+    };
+}
+
 export interface MissionState {
     phase: string;
     progress: number; // 0-100
@@ -301,7 +339,7 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
                 setMission(prev => ({ ...prev, progress: 20, jobs_running: 0 }));
                 addAgentMessage(
                     "Org Scanner Agent", "assistant",
-                    "Scan complete. I found 14 active CPQ artifacts. The 'Usage Radar' shows that 62% of your quote volume relies on just 5 complex Price Rules. We should migrate those first.",
+                    "Scan complete. I analyzed **1,453** artifacts and identified **12 high-complexity** items. The 'Usage Radar' shows that **62%** of your quote volume relies on the **Volume Discount** logic alone. I've prioritized the **top 5** impactful areas for migration.",
                     [
                         { label: "Analyze Dependencies", action_id: "view_deps", next_state: "S5" }
                     ]
@@ -540,11 +578,11 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
                         data: {
                             coverage: "78% of quote volume",
                             included: [
-                                { item: "Volume Discount (Seat Tiers)", usage: "62% of quotes", steps: ["Translate", "Verify", "Run"] },
-                                { item: "Discount > 15% Approval", usage: "224 triggers", steps: ["Translate", "Verify", "Run"] },
-                                { item: "Top 6 bundles by usage", usage: "covers 41% of quotes", steps: ["Translate", "Verify", "Run"] },
-                                { item: "Enterprise Quote PDF v3", usage: "12% of quotes", steps: ["Translate", "Verify", "Run"] },
-                                { item: "Data fix: Region__c completion", usage: "6% of lines missing", steps: ["Apply", "Verify"] }
+                                { id: "vol_discount", item: "Volume Discount (Seat Tiers)", usage: "62% of quotes", steps: ["Translate", "Verify", "Run"], isSelected: true },
+                                { id: "discount_approval", item: "Discount > 15% Approval", usage: "224 triggers", steps: ["Translate", "Verify", "Run"], isSelected: true },
+                                { id: "bundles", item: "Top 6 bundles by usage", usage: "covers 41% of quotes", steps: ["Translate", "Verify", "Run"], isSelected: true },
+                                { id: "quote_pdf", item: "Enterprise Quote PDF v3", usage: "12% of quotes", steps: ["Translate", "Verify", "Run"], isSelected: true },
+                                { id: "data_fix", item: "Data fix: Region__c completion", usage: "6% of lines missing", steps: ["Apply", "Verify"], isSelected: true }
                             ]
                         }
                     });
@@ -645,42 +683,137 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
 
                     setCurrentCanvas({
                         type: "translation_canvas",
-                        title: "Translation — Volume Discount (Seat Tiers)",
+                        title: "Translation Canvas — Phase 1 Scope",
                         data: {
-                            cpq_side: {
-                                name: "Volume Discount Schedule",
-                                inputs: ["SBQQ__Quantity__c", "SBQQ__ListPrice__c", "User.Segment__c"],
-                                plain_english: [
-                                    "If Quantity is between 10-49, apply 5% discount.",
-                                    "If Quantity is 50+, apply 10% discount.",
-                                    "Override: If User Segment is 'Partner', add extra 2%."
-                                ],
-                                evidence: ["Triggered on 62% of quotes", "98% matched standard tiers", "2% fell into partner override"]
-                            },
-                            rca_side: {
-                                construct: "Pricing Procedure",
-                                blocks: [
-                                    "Load List Price",
-                                    "Lookup Volume Discount Table",
-                                    "Calc Tier Adjustment",
-                                    "Check Partner Status",
-                                    "Finalize Net Price"
-                                ]
-                            },
-                            confirmations: [
+                            items: [
                                 {
-                                    question: "Confirm Tiers",
-                                    fields: { "Tier 1 Min": "10", "Tier 1 %": "5.0", "Tier 2 Min": "50", "Tier 2 %": "10.0" }
+                                    id: "vol_discount",
+                                    title: "Volume Discount (Seat Tiers)",
+                                    usage: "62% of quotes",
+                                    translationType: "rebuild",
+                                    inputs: ["Quantity", "ProductFamily"],
+                                    behavior: [
+                                        "Tiered discount: 1-10 =5%, 11-50 =10%...",
+                                        "Override: If User Segment is 'Partner', add extra 2%."
+                                    ],
+                                    evidence: ["8,942 quote lines in last 90 days"],
+                                    rcaApproach: "Rebuild with RCA Pricing Engine",
+                                    rcaDetails: [
+                                        "Original: CPQ Price Rule + QCP Script",
+                                        "Target: RCA Price Matrix + Expression"
+                                    ],
+                                    // Hybrid View Data
+                                    simpleExplanation: "We are moving from a custom script to a standard Pricing Matrix. This means you can manage discounts in a simple table without needing a developer.",
+                                    migrationVisual: "script_to_standard",
+                                    pros: ["Faster calculation speed", "No code to maintain", "Easy for sales ops to update"],
+                                    cons: ["Strict structure (less flexible than code)"],
+                                    parameterPreview: {
+                                        columns: ["Min Quantity", "Max Quantity", "Discount %"],
+                                        rows: [
+                                            ["1", "10", "5%"],
+                                            ["11", "50", "10%"],
+                                            ["51", "∞", "12%"]
+                                        ]
+                                    },
+                                    isVerified: false,
+                                    manualOverride: { active: false, type: 'rebuild', notes: '' }
+                                },
+                                {
+                                    id: "discount_approval",
+                                    title: "Discount > 15% Approval",
+                                    usage: "224 triggers",
+                                    translationType: "map-as-is",
+                                    inputs: ["Discount__c", "UserRole"],
+                                    behavior: [
+                                        "If Discount > 15%, route to Manager",
+                                        "Escalate to VP if > 30%"
+                                    ],
+                                    evidence: ["224 triggers in 90 days"],
+                                    rcaApproach: "Direct Mapping",
+                                    rcaDetails: [
+                                        "Trigger: Discount__c > 0.15 → SAME",
+                                        "Approver: Queue('Sales Managers') → SAME",
+                                        "No logic changes required"
+                                    ],
+                                    isVerified: false,
+                                    manualOverride: { active: false, type: 'map-as-is', notes: '' }
+                                },
+                                {
+                                    id: "bundles",
+                                    title: "Top 6 Bundles by Usage",
+                                    usage: "41% of quotes",
+                                    translationType: "map-as-is",
+                                    inputs: ["ProductBundle__c"],
+                                    behavior: [
+                                        "Laptop Package: laptop + bag + mouse",
+                                        "Server Rack: server + storage + switch"
+                                    ],
+                                    evidence: ["Covers 41% of quote lines"],
+                                    rcaApproach: "Direct Mapping",
+                                    rcaDetails: [
+                                        "Structure → RCA Bundle Configuration",
+                                        "Constraints → RCA Product Rules"
+                                    ],
+                                    isVerified: false,
+                                    manualOverride: { active: false, type: 'map-as-is', notes: '' }
+                                },
+                                {
+                                    id: "quote_pdf",
+                                    title: "Enterprise Quote PDF v3",
+                                    usage: "12% of quotes",
+                                    translationType: "rebuild",
+                                    inputs: ["Quote__c", "Account__c"],
+                                    behavior: [
+                                        "Generate branded PDF with line items",
+                                        "Dynamic header based on region"
+                                    ],
+                                    evidence: ["Used as default template"],
+                                    rcaApproach: "Rebuild with RCA Document Designer",
+                                    rcaDetails: [
+                                        "Original: Visualforce Page",
+                                        "Target: RCA Document Template"
+                                    ],
+                                    // Hybrid View Data
+                                    simpleExplanation: "We are converting the old Visualforce page (code) into a modern RCA Document Template. This allows for drag-and-drop editing.",
+                                    migrationVisual: "code_to_template",
+                                    pros: ["Drag-and-drop editor", "Consistent branding", "Faster generation"],
+                                    cons: ["Complex dynamic logic specific to old code might need simplification"],
+                                    parameterPreview: {
+                                        columns: ["Section Name", "Source Component", "Logic"],
+                                        rows: [
+                                            ["Header", "Account.BillingRegion", "Dynamic (Region)"],
+                                            ["Line Items", "QuoteLines__c", "Standard Table"],
+                                            ["Terms", "Static Content", "Standard Text"]
+                                        ]
+                                    },
+                                    isVerified: false,
+                                    manualOverride: { active: false, type: 'rebuild', notes: '' }
+                                },
+                                {
+                                    id: "data_fix",
+                                    title: "Data fix: Region__c",
+                                    usage: "6% of lines",
+                                    translationType: "map-as-is",
+                                    inputs: ["BillingCountry"],
+                                    behavior: [
+                                        "Populate Region from Country lookup",
+                                        "Default to 'AMER' if missing"
+                                    ],
+                                    evidence: ["6% of lines missing Region"],
+                                    rcaApproach: "Direct Mapping",
+                                    rcaDetails: [
+                                        "Logic → RCA Formula / Default Value",
+                                        "No complex transformation"
+                                    ],
+                                    isVerified: false,
+                                    manualOverride: { active: false, type: 'map-as-is', notes: '' }
                                 }
-                            ],
-                            test_plan_preview: {
-                                replay_sets: [
-                                    "Verify base price (Qty < 10)",
-                                    "Verify Tier 1 (Qty 10-49)",
-                                    "Verify Tier 2 (Qty 50+)",
-                                    "Verify Partner Override"
-                                ]
-                            }
+                            ].filter(item => {
+                                // Filter based on Scope Selection (mock logic: assuming scope was preserved)
+                                // Ideally, we'd pass selected IDs from prev state, but for demo continuity we'll filter hardcoded or assume check.
+                                // Let's try to persist selection if possible, otherwise showing all defaults for now.
+                                return true;
+                            })
                         }
                     });
                 }, 3500);
