@@ -274,8 +274,6 @@ const Main = () => {
 
 export default function Page() {
   return (
-    <DemoProvider>
-      <Main />
-    </DemoProvider>
+    <Main />
   );
 }

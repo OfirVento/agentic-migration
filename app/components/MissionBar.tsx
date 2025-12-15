@@ -146,6 +146,11 @@ export const MissionBar = () => {
                         CPQ <ChevronRight size={10} /> RCA
                     </div>
                 </div>
+                <div className="h-6 w-px bg-gray-200 mx-2" />
+                <div className="flex gap-4 text-sm font-medium">
+                    <a href="/" className="text-gray-500 hover:text-blue-600 transition-colors">Migration</a>
+                    <a href="/expert" className="text-gray-500 hover:text-blue-600 transition-colors">Expert Tools</a>
+                </div>
             </div>
 
             {/* Center: Journey Progress */}

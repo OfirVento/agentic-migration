@@ -105,6 +105,9 @@ interface DemoContextType {
     currentTask: AgentTask | null;
     isTyping: boolean;
     typingLabel: string | null;
+    // --- Expert Tools ---
+    expertOutputs: { id: string, title: string, time: string }[];
+    handleExpertAction: (action: string) => void;
 }
 
 // --- Seed Data ---
@@ -135,6 +138,7 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
     const [currentTask, setCurrentTask] = useState<AgentTask | null>(null);
     const [isTyping, setIsTyping] = useState(false);
     const [typingLabel, setTypingLabel] = useState<string | null>(null);
+    const [expertOutputs, setExpertOutputs] = useState<{ id: string, title: string, time: string }[]>([]);
 
     // Helper to add message with typing delay
     const addAgentMessage = (agentName: string, role: AgentRole, content: string, actions?: ActionButton[], meta?: any, reasoning?: string[], avatar?: string) => {
@@ -158,6 +162,46 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
                 timestamp: Date.now()
             }]);
         }, delay);
+    };
+
+    // Expert Action Handler
+    const handleExpertAction = (action: string) => {
+        setIsTyping(true);
+        setTimeout(() => {
+            setIsTyping(false);
+
+            let newOutput = null;
+            let successMsg = "";
+
+            switch (action) {
+                case 'generate_agenda':
+                    newOutput = { id: Date.now().toString(), title: "Workshop Agenda – Pricing Hotspots", time: "Just now" };
+                    successMsg = "Agenda generated successfully.";
+                    break;
+                case 'generate_test_plan':
+                    newOutput = { id: Date.now().toString(), title: "Parity Test Plan v1 (30 Scenarios)", time: "Just now" };
+                    successMsg = "Test plan created with 30 scenarios.";
+                    break;
+                case 'generate_recap':
+                    newOutput = { id: Date.now().toString(), title: "Client Recap – Week 2 Status", time: "Just now" };
+                    successMsg = "Draft email created.";
+                    break;
+                case 'generate_checklist':
+                    newOutput = { id: Date.now().toString(), title: "Migration Execution Checklist", time: "Just now" };
+                    successMsg = "Checklist generated.";
+                    break;
+                case 'analyze_changes':
+                    newOutput = { id: Date.now().toString(), title: "Diff Analysis – 3 Changes Found", time: "Just now" };
+                    successMsg = "Analysis complete. 3 changes detected.";
+                    break;
+            }
+
+            if (newOutput) {
+                setExpertOutputs(prev => [newOutput!, ...prev]);
+                // Optional: Add a toast system or log to chat
+                console.log(successMsg);
+            }
+        }, 1500);
     };
 
     // Helper for multi-agent sequences
@@ -1094,7 +1138,7 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
     }, []);
 
     return (
-        <DemoContext.Provider value={{ currentState, chatHistory, currentCanvas, mission, handleAction, handleUserMessage, transitionTo, currentTask, isTyping, typingLabel }}>
+        <DemoContext.Provider value={{ currentState, chatHistory, currentCanvas, mission, handleAction, handleUserMessage, transitionTo, currentTask, isTyping, typingLabel, expertOutputs, handleExpertAction }}>
             {children}
         </DemoContext.Provider>
     );
