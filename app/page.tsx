@@ -6,6 +6,7 @@ import { AgentRole, ChatMessage, AgentTask } from './components/DemoContext';
 import { User, Layers, Radio, Search, Play, CheckCircle, ArrowRight, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils'; // Assuming you have this utility
 import { CanvasRegistry } from './components/modules/CanvasRegistry';
+import { TypewriterText } from './components/TypewriterText';
 
 // --- Placeholder Components for Chat and Canvas ---
 
@@ -215,7 +216,14 @@ const ChatArea = () => {
             ? "bg-blue-600 text-white rounded-br-sm"
             : "bg-white border border-gray-100 text-gray-800 rounded-tl-sm"
         )}>
-          {msg.content}
+          {msg.role === 'user' ? (
+            msg.content
+          ) : (
+            <TypewriterText
+              text={msg.content}
+              isActive={msg.id === chatHistory[chatHistory.length - 1].id}
+            />
+          )}
         </div>
 
         {/* INLINE TASK CARD */}
