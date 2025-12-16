@@ -6,7 +6,7 @@ import { AgentRole, ChatMessage, AgentTask } from './components/DemoContext';
 import { User, Layers, Radio, Search, Play, CheckCircle, ArrowRight, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils'; // Assuming you have this utility
 import { CanvasRegistry } from './components/modules/CanvasRegistry';
-import { TypewriterText } from './components/TypewriterText';
+import { ChatMessageItem } from './components/ChatMessageItem';
 
 // --- Placeholder Components for Chat and Canvas ---
 
@@ -100,7 +100,7 @@ const ReasoningBlock = ({ steps }: { steps: string[] }) => {
   );
 };
 
-const TaskCard = ({ task }: { task: AgentTask }) => {
+export const TaskCard = ({ task }: { task: AgentTask }) => {
   if (!task) return null;
   return (
     <div className="mb-6 mx-1 rounded-xl border border-gray-200 bg-white text-gray-900 overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-3 duration-500">
@@ -195,78 +195,19 @@ const ChatArea = () => {
     }
   }, [chatHistory, isTyping, currentTask]);
 
-  const renderMessage = (msg: ChatMessage) => (
-    <div key={msg.id} className={cn("flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300",
-      msg.role === 'user' ? "flex-row-reverse" : "flex-row"
-    )}>
-      {msg.role !== 'user' && <AgentAvatar role={msg.role} displayName={msg.agentName} avatarUrl={msg.avatar} />}
-
-      <div className={cn("flex flex-col max-w-[85%]",
-        msg.role === 'user' ? "items-end" : "items-start"
-      )}>
-        {msg.role !== 'user' && (
-          <span className="text-xs font-semibold text-gray-500 mb-1 ml-1">{msg.agentName}</span>
-        )}
-
-        {msg.reasoning && <ReasoningBlock steps={msg.reasoning} />}
-
-        <div className={cn(
-          "px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm",
-          msg.role === 'user'
-            ? "bg-blue-600 text-white rounded-br-sm"
-            : "bg-white border border-gray-100 text-gray-800 rounded-tl-sm"
-        )}>
-          {msg.role === 'user' ? (
-            msg.content
-          ) : (
-            <TypewriterText
-              text={msg.content}
-              isActive={msg.id === chatHistory[chatHistory.length - 1].id}
-            />
-          )}
-        </div>
-
-        {/* INLINE TASK CARD */}
-        {msg.meta?.taskId && tasksHistory?.[msg.meta.taskId] && (
-          <div className="mt-4 w-full">
-            <TaskCard task={tasksHistory[msg.meta.taskId]} />
-          </div>
-        )}
-
-        {msg.actions && (
-          <div className="flex flex-wrap gap-2 mt-3 w-full">
-            {msg.actions.map((action, idx) => (
-              <button
-                key={idx}
-                onClick={() => {
-                  if (action.next_state) {
-                    transitionTo(action.next_state);
-                  } else if (action.action_id) {
-                    handleAction(action.action_id);
-                  } else if (action.effect === 'toast') {
-                    // Fallback
-                    alert(`${action.label} - This feature is coming soon!`);
-                  }
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-xs font-medium text-gray-700 hover:bg-gray-100 hover:border-gray-300 transition-all group shadow-sm"
-              >
-                {action.label}
-                <ArrowRight size={12} className="opacity-50 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
   return (
     <div className="flex flex-col h-full overflow-hidden bg-white">
       {/* Messages List */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth">
 
         {/* 1. Render all messages */}
-        {chatHistory.map(renderMessage)}
+        {chatHistory.map((msg, index) => (
+          <ChatMessageItem
+            key={msg.id}
+            msg={msg}
+            isLast={index === chatHistory.length - 1}
+          />
+        ))}
 
         {/* 2. Render the Active Task Card at the bottom ONLY if it is NOT already rendered inline */}
         {currentTask && !chatHistory.some(m => m.meta?.taskId === currentTask.id) && (
