@@ -95,9 +95,9 @@ export const ChatMessageItem = ({ msg, isLast }: ChatMessageItemProps) => {
         if (!isLast) setShowActions(true);
     }, [isLast]);
 
-    const handleTypingComplete = () => {
+    const handleTypingComplete = React.useCallback(() => {
         setShowActions(true);
-    };
+    }, []);
 
     return (
         <div className={cn("flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300",

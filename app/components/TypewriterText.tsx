@@ -11,6 +11,18 @@ export const TypewriterText = ({ text, isActive, speed = 15, onComplete }: Typew
     const [displayedText, setDisplayedText] = useState(isActive ? "" : text);
     const indexRef = useRef(0);
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const onCompleteRef = useRef(onComplete);
+    const displayedTextRef = useRef("");
+
+    // Update ref when prop changes
+    useEffect(() => {
+        onCompleteRef.current = onComplete;
+    }, [onComplete]);
+
+    // Keep strict tracked reference for comparison
+    useEffect(() => {
+        displayedTextRef.current = displayedText;
+    }, [displayedText]);
 
     // If not active (old message), show full text immediately
     useEffect(() => {
@@ -38,7 +50,7 @@ export const TypewriterText = ({ text, isActive, speed = 15, onComplete }: Typew
                 indexRef.current++;
                 timeoutRef.current = setTimeout(typeChar, speed);
             } else {
-                if (onComplete) onComplete();
+                if (onCompleteRef.current) onCompleteRef.current();
             }
         };
 
@@ -50,13 +62,7 @@ export const TypewriterText = ({ text, isActive, speed = 15, onComplete }: Typew
         return () => {
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
         };
-    }, [text, isActive, speed, onComplete]);
-
-    // Keep strict tracked reference for comparison
-    const displayedTextRef = useRef("");
-    useEffect(() => {
-        displayedTextRef.current = displayedText;
-    }, [displayedText]);
+    }, [text, isActive, speed]);
 
     return <span>{displayedText}</span>;
 };
