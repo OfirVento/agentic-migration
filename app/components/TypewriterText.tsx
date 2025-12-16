@@ -9,59 +9,37 @@ interface TypewriterTextProps {
 
 export const TypewriterText = ({ text, isActive, speed = 15, onComplete }: TypewriterTextProps) => {
     const [displayedText, setDisplayedText] = useState(isActive ? "" : text);
-    const indexRef = useRef(0);
-    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
     const onCompleteRef = useRef(onComplete);
-    const displayedTextRef = useRef("");
 
-    // Update ref when prop changes
+    // Keep ref updated
     useEffect(() => {
         onCompleteRef.current = onComplete;
     }, [onComplete]);
 
-    // Keep strict tracked reference for comparison
     useEffect(() => {
-        displayedTextRef.current = displayedText;
-    }, [displayedText]);
-
-    // If not active (old message), show full text immediately
-    useEffect(() => {
+        // Case 1: Not active (old message) -> Show full text immediately
         if (!isActive) {
             setDisplayedText(text);
-            if (timeoutRef.current) clearTimeout(timeoutRef.current);
             return;
         }
-    }, [isActive, text]);
 
-    // Typing effect logic
-    useEffect(() => {
-        if (!isActive) return;
+        // Case 2: Active -> Start typing animation
+        setDisplayedText(""); // Start from empty
+        let currentIdx = 0;
 
-        // Reset if text changes significantly (new message)
-        if (text.startsWith(displayedTextRef.current) === false) {
-            indexRef.current = 0;
-            setDisplayedText("");
-        }
-
-        const typeChar = () => {
-            if (indexRef.current < text.length) {
-                const char = text.charAt(indexRef.current);
-                setDisplayedText((prev) => prev + char);
-                indexRef.current++;
-                timeoutRef.current = setTimeout(typeChar, speed);
+        const intervalId = setInterval(() => {
+            if (currentIdx < text.length) {
+                // Use slice to be safe and efficient
+                setDisplayedText(text.slice(0, currentIdx + 1));
+                currentIdx++;
             } else {
+                clearInterval(intervalId);
+                // Trigger completion
                 if (onCompleteRef.current) onCompleteRef.current();
             }
-        };
+        }, speed);
 
-        // Start typing if not already started
-        if (indexRef.current === 0) {
-            typeChar();
-        }
-
-        return () => {
-            if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        };
+        return () => clearInterval(intervalId);
     }, [text, isActive, speed]);
 
     return <span>{displayedText}</span>;
