@@ -61,6 +61,9 @@ const JourneyProgress = () => {
 
     // Map S0-S15 to 1-7 Stages
     const getActiveStage = (state: string) => {
+        // Special mapping for named states
+        if (state.includes("FIT_GAP")) return 2;
+
         const s = parseInt(state.substring(1));
         if (s <= 2) return 1; // Discovery (S0, S1, S2)
         if (s <= 5) return 2; // Fit-Gap (S3, S4, S5)
