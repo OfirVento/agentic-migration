@@ -61,8 +61,7 @@ export const AppShell = ({ chat, canvas, children, title, subtitle }: AppShellPr
                 )}
             </div>
 
-            {/* Global Overlay: Clarification Inbox */}
-            <ClarificationInbox blockers={blockers} onResolve={resolveBlocker} />
+
         </div>
     );
 };

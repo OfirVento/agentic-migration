@@ -34,6 +34,7 @@ export interface ChatMessage {
     meta?: {
         job_id?: string;
         status?: 'running' | 'completed' | 'failed';
+        taskId?: string; // New: Link to task
     };
     timestamp: number;
 }
@@ -115,12 +116,11 @@ interface DemoContextType {
     currentTask: AgentTask | null;
     isTyping: boolean;
     typingLabel: string | null;
-    // --- Expert Tools ---
     expertOutputs: { id: string, title: string, time: string }[];
     handleExpertAction: (action: string) => void;
-    // --- Blocker System ---
     blockers: Blocker[];
     resolveBlocker: (id: string, option: string) => void;
+    tasksHistory: Record<string, AgentTask>; // New: Persistent task history
 }
 
 // --- Seed Data ---
@@ -133,9 +133,15 @@ const INITIAL_MISSION: MissionState = {
     jobs_running: 0,
 };
 
+const INITIAL_STATE = {
+    chatHistory: [],
+    currentCanvas: { type: 'scan_scope', title: 'CPQ Inventory Scan', data: null },
+    mission: INITIAL_MISSION
+};
+
 // --- Context ---
 
-const DemoContext = createContext<DemoContextType | undefined>(undefined);
+const DemoContext = createContext<DemoContextType>({} as DemoContextType);
 
 export const useDemo = () => {
     const context = useContext(DemoContext);
@@ -147,12 +153,24 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
     const [currentState, setCurrentState] = useState('S0');
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
     const [currentCanvas, setCurrentCanvas] = useState<CanvasState | null>(null);
+    const [currentLayout, setCurrentLayout] = useState('standard');
     const [mission, setMission] = useState<MissionState>(INITIAL_MISSION);
     const [currentTask, setCurrentTask] = useState<AgentTask | null>(null);
+    const [tasksHistory, setTasksHistory] = useState<Record<string, AgentTask>>({}); // New: Tasks History
     const [isTyping, setIsTyping] = useState(false);
     const [typingLabel, setTypingLabel] = useState<string | null>(null);
     const [expertOutputs, setExpertOutputs] = useState<{ id: string, title: string, time: string }[]>([]);
     const [blockers, setBlockers] = useState<Blocker[]>([]);
+
+    // Sync currentTask to tasksHistory whenever it changes
+    useEffect(() => {
+        if (currentTask) {
+            setTasksHistory(prev => ({
+                ...prev,
+                [currentTask.id]: currentTask
+            }));
+        }
+    }, [currentTask]);
 
     // Helper to add message with typing delay
     const addAgentMessage = (agentName: string, role: AgentRole, content: string, actions?: ActionButton[], meta?: any, reasoning?: string[], avatar?: string) => {
@@ -244,18 +262,208 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
         // Log to chat
         addAgentMessage(
             "System", "system",
-            `Blocker resolved: Selected "${option}". Resuming execution...`
+            `Blocker resolved: Selected "${option}".`
         );
+
+        // Resume S8 Logic if this was the S8 blocker
+        if (id === "blocker_s8_01") {
+            setTimeout(() => {
+
+                let agentMessage = "";
+                let rcaApproach = "";
+                let translationType: 'rebuild' | 'map-as-is' = 'rebuild';
+                let manualOverride: { active: boolean; type: 'rebuild' | 'map-as-is'; notes: string } = { active: false, type: 'rebuild', notes: '' };
+                let titlePrefix = "";
+
+                if (option.includes("Mock")) {
+                    agentMessage = "Understood. I will mock the service response. I’ve converted the Price Rules to RCA Pricing Procedures. Please confirm the tier boundaries.";
+                    rcaApproach = "Rebuild with RCA Pricing Engine";
+                    translationType = 'rebuild';
+                } else if (option.includes("Manual")) {
+                    agentMessage = "Noted. I've flagged 'Volume Discount' for manual review and excluded it from the automated batch. Proceeding with the rest.";
+                    rcaApproach = "Manual Task (Flagged)";
+                    translationType = 'map-as-is';
+                    manualOverride = { active: true, type: 'map-as-is', notes: 'Flagged for manual review via Chat' };
+                } else if (option.includes("Wait")) {
+                    agentMessage = "I'll hold off on 'Volume Discount' for now. I've marked it as paused and will proceed with the validated items.";
+                    rcaApproach = "PAUSED (Pending Input)";
+                    titlePrefix = "(PAUSED) ";
+                    translationType = 'map-as-is';
+                }
+
+                // Resume Agent Chat
+                runTeamSequence([
+                    {
+                        agent: "Logic Translator Agent", role: "assistant",
+                        text: agentMessage,
+                        actions: [
+                            { label: "Confirm Logic", action_id: "confirm_logic", next_state: "S9" },
+                            { label: "View Source Code", action_id: "view_source", effect: "toast" }
+                        ],
+                        reasoning: ["Applied resolution strategy...", "Resuming conversion...", "Updating Canvas..."]
+                    }
+                ]);
+
+                // Resume Task
+                setCurrentTask(prev => prev ? ({
+                    ...prev,
+                    status: (option.includes("Wait") ? "Skipping Blocked Item..." : "Generating Blocks..."),
+                    steps: prev.steps.map(s =>
+                        s.id === "1" ? { ...s, status: "completed" } :
+                            s.id === "2" ? { ...s, status: "running" } : s
+                    )
+                }) : null);
+
+                // Show Real Data (after slight delay to simulate work)
+                setTimeout(() => {
+                    setCurrentTask(prev => prev ? ({
+                        ...prev,
+                        status: "Complete",
+                        steps: prev.steps.map(s => ({ ...s, status: "completed" as const }))
+                    }) : null);
+
+                    setCurrentCanvas({
+                        type: "translation_canvas",
+                        title: "Translation Canvas — Phase 1 Scope",
+                        data: {
+                            items: [
+                                {
+                                    id: "vol_discount",
+                                    title: titlePrefix + "Volume Discount (Seat Tiers)",
+                                    usage: "62% of quotes",
+                                    translationType: translationType,
+                                    inputs: ["Quantity", "ProductFamily"],
+                                    behavior: [
+                                        "Tiered discount: 1-10 =5%, 11-50 =10%...",
+                                        "Override: If User Segment is 'Partner', add extra 2%."
+                                    ],
+                                    evidence: ["8,942 quote lines in last 90 days"],
+                                    rcaApproach: rcaApproach,
+                                    rcaDetails: [
+                                        "Original: CPQ Price Rule + QCP Script",
+                                        "Target: RCA Price Matrix + Expression"
+                                    ],
+                                    simpleExplanation: "We are moving from a custom script to a standard Pricing Matrix. This means you can manage discounts in a simple table without needing a developer.",
+                                    migrationVisual: "script_to_standard",
+                                    pros: ["Faster calculation speed", "No code to maintain", "Easy for sales ops to update"],
+                                    cons: ["Strict structure (less flexible than code)"],
+                                    parameterPreview: {
+                                        columns: ["Min Quantity", "Max Quantity", "Discount %"],
+                                        rows: [
+                                            ["1", "10", "5%"],
+                                            ["11", "50", "10%"],
+                                            ["51", "100", "15%"]
+                                        ]
+                                    },
+                                    manualOverride: manualOverride
+                                },
+                                {
+                                    id: "discount_approval",
+                                    title: "Discount > 15% Approval",
+                                    usage: "224 triggers",
+                                    translationType: "map-as-is",
+                                    inputs: ["Discount__c", "UserRole"],
+                                    behavior: [
+                                        "If Discount > 15%, route to Manager",
+                                        "Escalate to VP if > 30%"
+                                    ],
+                                    evidence: ["224 triggers in 90 days"],
+                                    rcaApproach: "Direct Mapping",
+                                    rcaDetails: [
+                                        "Trigger: Discount__c > 0.15 → SAME",
+                                        "Approver: Queue('Sales Managers') → SAME",
+                                        "No logic changes required"
+                                    ],
+                                    isVerified: false,
+                                    manualOverride: { active: false, type: 'map-as-is', notes: '' }
+                                },
+                                {
+                                    id: "bundles",
+                                    title: "Top 6 Bundles by Usage",
+                                    usage: "41% of quotes",
+                                    translationType: "map-as-is",
+                                    inputs: ["ProductBundle__c"],
+                                    behavior: [
+                                        "Laptop Package: laptop + bag + mouse",
+                                        "Server Rack: server + storage + switch"
+                                    ],
+                                    evidence: ["Covers 41% of quote lines"],
+                                    rcaApproach: "Direct Mapping",
+                                    rcaDetails: [
+                                        "Structure → RCA Bundle Configuration",
+                                        "Constraints → RCA Product Rules"
+                                    ],
+                                    isVerified: false,
+                                    manualOverride: { active: false, type: 'map-as-is', notes: '' }
+                                },
+                                {
+                                    id: "quote_pdf",
+                                    title: "Enterprise Quote PDF v3",
+                                    usage: "12% of quotes",
+                                    translationType: "rebuild",
+                                    inputs: ["Quote__c", "Account__c"],
+                                    behavior: [
+                                        "Generate branded PDF with line items",
+                                        "Dynamic header based on region"
+                                    ],
+                                    evidence: ["Used as default template"],
+                                    rcaApproach: "Rebuild with RCA Document Designer",
+                                    rcaDetails: [
+                                        "Original: Visualforce Page",
+                                        "Target: RCA Document Template"
+                                    ],
+                                    // Hybrid View Data
+                                    simpleExplanation: "We are converting the old Visualforce page (code) into a modern RCA Document Template. This allows for drag-and-drop editing.",
+                                    migrationVisual: "code_to_template",
+                                    pros: ["Drag-and-drop editor", "Consistent branding", "Faster generation"],
+                                    cons: ["Complex dynamic logic specific to old code might need simplification"],
+                                    parameterPreview: {
+                                        columns: ["Section Name", "Source Component", "Logic"],
+                                        rows: [
+                                            ["Header", "Account.BillingRegion", "Dynamic (Region)"],
+                                            ["Line Items", "QuoteLines__c", "Standard Table"],
+                                            ["Terms", "Static Content", "Standard Text"]
+                                        ]
+                                    },
+                                    isVerified: false,
+                                    manualOverride: { active: false, type: 'rebuild', notes: '' }
+                                },
+                                {
+                                    id: "data_fix",
+                                    title: "Data fix: Region__c",
+                                    usage: "6% of lines",
+                                    translationType: "map-as-is",
+                                    inputs: ["BillingCountry"],
+                                    behavior: [
+                                        "Populate Region from Country lookup",
+                                        "Default to 'AMER' if missing"
+                                    ],
+                                    evidence: ["6% of lines missing Region"],
+                                    rcaApproach: "Direct Mapping",
+                                    rcaDetails: [
+                                        "Logic → RCA Formula / Default Value",
+                                        "No complex transformation"
+                                    ],
+                                    isVerified: false,
+                                    manualOverride: { active: false, type: 'map-as-is', notes: '' }
+                                }
+                            ]
+                        }
+                    });
+                }, 1500);
+
+            }, 1000);
+        }
     };
 
     // Helper for multi-agent sequences
-    const runTeamSequence = (messages: Array<{ agent: string, role: AgentRole, text: string, actions?: ActionButton[], reasoning?: string[] }>, delayBetween: number = 2000) => {
+    const runTeamSequence = (messages: Array<{ agent: string, role: AgentRole, text: string, actions?: ActionButton[], reasoning?: string[], meta?: any }>, delayBetween: number = 2000) => {
         let chain = Promise.resolve();
         messages.forEach((msg, idx) => {
             const delay = idx === 0 ? 100 : delayBetween;
             chain = chain.then(() => new Promise(resolve => {
                 setTimeout(() => {
-                    addAgentMessage(msg.agent, msg.role, msg.text, msg.actions, undefined, msg.reasoning);
+                    addAgentMessage(msg.agent, msg.role, msg.text, msg.actions, msg.meta, msg.reasoning);
                     resolve();
                 }, delay);
             }));
@@ -370,7 +578,8 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
                             "Connecting to Salesforce Metadata API...",
                             "Querying SBQQ__QuoteLine__c for usage frequency...",
                             "Identifying top 5 artifacts affecting Total Price."
-                        ]
+                        ],
+                        meta: { taskId: "task_scan_01" }
                     }
                 ], 2000);
 
@@ -413,22 +622,36 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
                 }, 2500);
 
                 setTimeout(() => {
-                    // Complete Task
-                    setCurrentTask(prev => prev ? ({
-                        ...prev,
+                    // Complete Task - Logic refactored to ensure history captures "Complete" state
+                    const completedTask: AgentTask = {
+                        id: "task_scan_01",
+                        title: "Scanning CPQ Inventory",
                         status: "Complete",
-                        steps: prev.steps.map(s => ({ ...s, status: "completed" as const }))
-                    }) : null);
-                    transitionTo('S3');
+                        startTime: Date.now(), // approximation, or keep original if we had reference
+                        steps: [
+                            { id: "1", text: "Scan Product Objects", status: "completed" },
+                            { id: "2", text: "Analyze Price Rules", status: "completed" },
+                            { id: "3", text: "Map Dependencies", status: "completed" }
+                        ]
+                    };
+
+                    // Manually force update history to verify state persistence
+                    setTasksHistory(prev => ({ ...prev, [completedTask.id]: completedTask }));
+                    setCurrentTask(completedTask);
+
+                    // Delay slightly to allow render paint before transition (optional but safer)
+                    setTimeout(() => transitionTo('S3'), 50);
                 }, 5000);
                 break;
 
             case 'S3': // Usage Radar
                 setMission(prev => ({ ...prev, progress: 20, jobs_running: 0 }));
+                setCurrentTask(null); // Clear task to prevent bottom rendering (history preserved)
                 addAgentMessage(
                     "Org Scanner Agent", "assistant",
                     "Scan complete. I analyzed **1,453** artifacts and identified **12 high-complexity** items. The 'Usage Radar' shows that **62%** of your quote volume relies on the **Volume Discount** logic alone. I've prioritized the **top 5** impactful areas for migration.",
                     [
+                        { label: "View Analysis", action_id: "view_fit_gap_early", next_state: "S_FIT_GAP_EARLY" },
                         { label: "Analyze Dependencies", action_id: "view_deps", next_state: "S5" }
                     ]
                 );
@@ -581,7 +804,8 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
                     "I've mapped the dependencies. The Volume Discount logic feeds into the Partner Rebate program. We must migrate them together to avoid breaking the calculation chain.",
                     [
                         { label: "Generate Phase 1 Proposal", action_id: "gen_proposal", next_state: "S6_80" }
-                    ]
+                    ],
+                    { taskId: "task_plan_01" } // Link to task for inline rendering
                 );
                 setCurrentCanvas({
                     type: "dependency_map",
@@ -603,6 +827,8 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
                     }
                 });
                 break;
+
+
 
             case 'S6_80':
                 addAgentMessage(
@@ -654,11 +880,20 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
 
                 setTimeout(() => {
                     // Complete Task & Show Real Data
-                    setCurrentTask(prev => prev ? ({
-                        ...prev,
+                    const completedTask: AgentTask = {
+                        id: "task_plan_01",
+                        title: "Analyzing Dependencies",
                         status: "Complete",
-                        steps: prev.steps.map(s => ({ ...s, status: "completed" as const }))
-                    }) : null);
+                        startTime: Date.now(),
+                        steps: [
+                            { id: "1", text: "Cluster Top 20 Artifacts", status: "completed" },
+                            { id: "2", text: "Calculate Dependency Surface", status: "completed" },
+                            { id: "3", text: "Project Coverage %", status: "completed" }
+                        ]
+                    };
+
+                    setTasksHistory(prev => ({ ...prev, [completedTask.id]: completedTask }));
+                    setCurrentTask(completedTask);
 
                     setCurrentCanvas({
                         type: "phase_scope_proposal",
@@ -679,6 +914,7 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
 
             case 'S7': // Stakeholder Confirm
                 setMission(prev => ({ ...prev, progress: 38 }));
+                setCurrentTask(null); // Clear task to prevent bottom rendering (history preserved)
                 addAgentMessage(
                     "Priority Planner Agent", "assistant",
                     "Before we start, I found 3 stakeholders who own these rules. Should we notify them?",
@@ -704,6 +940,7 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
             case 'S8': // Translation Canvas - Team
                 setMission(prev => ({ ...prev, phase: "Convert", progress: 45 }));
 
+                // 1. Start the Sequence (Simulate Start)
                 runTeamSequence([
                     {
                         agent: "Migration Agent", role: "system",
@@ -711,20 +948,13 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
                     },
                     {
                         agent: "Logic Translator Agent", role: "assistant",
-                        text: "I'm translating the 'Volume Discount' bundle now. I’ve converted the Price Rules to RCA Pricing Procedures. Please confirm the tier boundaries.",
-                        actions: [
-                            { label: "Confirm Logic", action_id: "confirm_logic", next_state: "S9" },
-                            { label: "View Source Code", action_id: "view_source", effect: "toast" }
-                        ],
-                        reasoning: [
-                            "Analyzing SBQQ__DiscountSchedule__c structure...",
-                            "Mapping Price Tiers to RCA Decision Matrix...",
-                            "Detected custom script 'PartnerOverride' -> converting to conditional logic block."
-                        ]
+                        text: "I'm translating the 'Volume Discount' bundle now. Parsing CPQ Price Rules...",
+                        reasoning: ["Analyzing SBQQ__DiscountSchedule__c...", "Detected external dependency: 'LegacyPricingService'"],
+                        meta: { taskId: "task_trans_01" } // Link message to task
                     }
                 ]);
 
-                // Start Agent Task
+                // 2. Start Task (Initial State)
                 setCurrentTask({
                     id: "task_trans_01",
                     title: "Translating CPQ Logic",
@@ -737,7 +967,7 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
                     ]
                 });
 
-                // Show placeholder state first
+                // 3. Set Placeholder Canvas
                 setCurrentCanvas({
                     type: "translation_canvas",
                     title: "Translation — Generating...",
@@ -749,162 +979,69 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
                     }
                 });
 
+                // 4. Trigger Blocker after delay
                 setTimeout(() => {
-                    // Update Task
-                    setCurrentTask(prev => prev ? ({
-                        ...prev,
-                        status: "Generating Blocks...",
-                        steps: prev.steps.map(s =>
-                            s.id === "1" ? { ...s, status: "completed" } :
-                                s.id === "2" ? { ...s, status: "running" } : s
-                        )
-                    }) : null);
-                }, 1500);
+                    // Update Task Status to Blocked
+                    setCurrentTask(prev => prev ? ({ ...prev, status: "Blocked" }) : null);
 
-                setTimeout(() => {
-                    // Complete Task & Show Real Data
-                    setCurrentTask(prev => prev ? ({
-                        ...prev,
-                        status: "Complete",
-                        steps: prev.steps.map(s => ({ ...s, status: "completed" as const }))
-                    }) : null);
+                    // Add Blocker to State
+                    setBlockers(prev => [...prev, {
+                        id: "blocker_s8_01",
+                        agent: "Logic Translator Agent",
+                        question: "I found a dependency on an external API 'LegacyPricingService' in the 'Volume Discount' rule. I cannot migrate this logic automatically. How should I proceed?",
+                        options: [
+                            "Mock the service response (Standard)",
+                            "Map as 'Manual Task' for later",
+                            "Wait for developer input"
+                        ],
+                        status: 'open',
+                        timestamp: Date.now()
+                    }]);
 
-                    setCurrentCanvas({
-                        type: "translation_canvas",
-                        title: "Translation Canvas — Phase 1 Scope",
-                        data: {
-                            items: [
-                                {
-                                    id: "vol_discount",
-                                    title: "Volume Discount (Seat Tiers)",
-                                    usage: "62% of quotes",
-                                    translationType: "rebuild",
-                                    inputs: ["Quantity", "ProductFamily"],
-                                    behavior: [
-                                        "Tiered discount: 1-10 =5%, 11-50 =10%...",
-                                        "Override: If User Segment is 'Partner', add extra 2%."
-                                    ],
-                                    evidence: ["8,942 quote lines in last 90 days"],
-                                    rcaApproach: "Rebuild with RCA Pricing Engine",
-                                    rcaDetails: [
-                                        "Original: CPQ Price Rule + QCP Script",
-                                        "Target: RCA Price Matrix + Expression"
-                                    ],
-                                    // Hybrid View Data
-                                    simpleExplanation: "We are moving from a custom script to a standard Pricing Matrix. This means you can manage discounts in a simple table without needing a developer.",
-                                    migrationVisual: "script_to_standard",
-                                    pros: ["Faster calculation speed", "No code to maintain", "Easy for sales ops to update"],
-                                    cons: ["Strict structure (less flexible than code)"],
-                                    parameterPreview: {
-                                        columns: ["Min Quantity", "Max Quantity", "Discount %"],
-                                        rows: [
-                                            ["1", "10", "5%"],
-                                            ["11", "50", "10%"],
-                                            ["51", "∞", "12%"]
-                                        ]
-                                    },
-                                    isVerified: false,
-                                    manualOverride: { active: false, type: 'rebuild', notes: '' }
-                                },
-                                {
-                                    id: "discount_approval",
-                                    title: "Discount > 15% Approval",
-                                    usage: "224 triggers",
-                                    translationType: "map-as-is",
-                                    inputs: ["Discount__c", "UserRole"],
-                                    behavior: [
-                                        "If Discount > 15%, route to Manager",
-                                        "Escalate to VP if > 30%"
-                                    ],
-                                    evidence: ["224 triggers in 90 days"],
-                                    rcaApproach: "Direct Mapping",
-                                    rcaDetails: [
-                                        "Trigger: Discount__c > 0.15 → SAME",
-                                        "Approver: Queue('Sales Managers') → SAME",
-                                        "No logic changes required"
-                                    ],
-                                    isVerified: false,
-                                    manualOverride: { active: false, type: 'map-as-is', notes: '' }
-                                },
-                                {
-                                    id: "bundles",
-                                    title: "Top 6 Bundles by Usage",
-                                    usage: "41% of quotes",
-                                    translationType: "map-as-is",
-                                    inputs: ["ProductBundle__c"],
-                                    behavior: [
-                                        "Laptop Package: laptop + bag + mouse",
-                                        "Server Rack: server + storage + switch"
-                                    ],
-                                    evidence: ["Covers 41% of quote lines"],
-                                    rcaApproach: "Direct Mapping",
-                                    rcaDetails: [
-                                        "Structure → RCA Bundle Configuration",
-                                        "Constraints → RCA Product Rules"
-                                    ],
-                                    isVerified: false,
-                                    manualOverride: { active: false, type: 'map-as-is', notes: '' }
-                                },
-                                {
-                                    id: "quote_pdf",
-                                    title: "Enterprise Quote PDF v3",
-                                    usage: "12% of quotes",
-                                    translationType: "rebuild",
-                                    inputs: ["Quote__c", "Account__c"],
-                                    behavior: [
-                                        "Generate branded PDF with line items",
-                                        "Dynamic header based on region"
-                                    ],
-                                    evidence: ["Used as default template"],
-                                    rcaApproach: "Rebuild with RCA Document Designer",
-                                    rcaDetails: [
-                                        "Original: Visualforce Page",
-                                        "Target: RCA Document Template"
-                                    ],
-                                    // Hybrid View Data
-                                    simpleExplanation: "We are converting the old Visualforce page (code) into a modern RCA Document Template. This allows for drag-and-drop editing.",
-                                    migrationVisual: "code_to_template",
-                                    pros: ["Drag-and-drop editor", "Consistent branding", "Faster generation"],
-                                    cons: ["Complex dynamic logic specific to old code might need simplification"],
-                                    parameterPreview: {
-                                        columns: ["Section Name", "Source Component", "Logic"],
-                                        rows: [
-                                            ["Header", "Account.BillingRegion", "Dynamic (Region)"],
-                                            ["Line Items", "QuoteLines__c", "Standard Table"],
-                                            ["Terms", "Static Content", "Standard Text"]
-                                        ]
-                                    },
-                                    isVerified: false,
-                                    manualOverride: { active: false, type: 'rebuild', notes: '' }
-                                },
-                                {
-                                    id: "data_fix",
-                                    title: "Data fix: Region__c",
-                                    usage: "6% of lines",
-                                    translationType: "map-as-is",
-                                    inputs: ["BillingCountry"],
-                                    behavior: [
-                                        "Populate Region from Country lookup",
-                                        "Default to 'AMER' if missing"
-                                    ],
-                                    evidence: ["6% of lines missing Region"],
-                                    rcaApproach: "Direct Mapping",
-                                    rcaDetails: [
-                                        "Logic → RCA Formula / Default Value",
-                                        "No complex transformation"
-                                    ],
-                                    isVerified: false,
-                                    manualOverride: { active: false, type: 'map-as-is', notes: '' }
-                                }
-                            ].filter(item => {
-                                // Filter based on Scope Selection (mock logic: assuming scope was preserved)
-                                // Ideally, we'd pass selected IDs from prev state, but for demo continuity we'll filter hardcoded or assume check.
-                                // Let's try to persist selection if possible, otherwise showing all defaults for now.
-                                return true;
-                            })
-                        }
-                    });
-                }, 3500);
+                    // Add Chat Notification with Direct Actions
+                    addAgentMessage(
+                        "Logic Translator Agent", "assistant",
+                        "I've encountered an ambiguity. I found a dependency on 'LegacyPricingService' that I cannot migrate automatically. I have paused execution.",
+                        [
+                            { label: "Mock Service", action_id: "resolve_mock", effect: "toast" },
+                            { label: "Map Manual", action_id: "resolve_manual", effect: "toast" },
+                            { label: "Wait", action_id: "resolve_wait", effect: "toast" }
+                        ],
+                        undefined,
+                        ["Error: Unknown external reference detected.", "Halting for human review."]
+                    );
+                }, 2000);
+                break;
+
+            case 'S_FIT_GAP_EARLY': // Early Access Fit-Gap
+                addAgentMessage(
+                    "Migration Agent", "system",
+                    "Here is the early Fit-Gap Analysis based on the initial scan. You can review the complexity and fallout before proceeding to dependency analysis.",
+                    [
+                        { label: "Proceed to Dependencies", action_id: "proceed_deps", next_state: "S5" }, // Resume normal flow
+                        { label: "Back to Radar", action_id: "back_radar", next_state: "S3" }
+                    ]
+                );
+                setCurrentCanvas({
+                    type: "fit_gap_analysis",
+                    title: "Fit-Gap Analysis (Preview)",
+                    data: {}
+                });
+                break;
+
+            case 'S_FIT_GAP': // New Fit-Gap Analysis State
+                addAgentMessage(
+                    "Migration Agent", "system",
+                    "Here is the detailed Fit-Gap Analysis. I've visualized the complexity network, data flow, and volume impact to help you make a decision on the external dependency.",
+                    [
+                        { label: "Resume Migration", action_id: "resume_migration", next_state: "S8" } // Go back to S8 to resolve
+                    ]
+                );
+                setCurrentCanvas({
+                    type: "fit_gap_analysis",
+                    title: "Fit-Gap Analysis",
+                    data: {} // Component manages its own static data for now
+                });
                 break;
 
             case 'S9': // Generate Replay Suite
@@ -1171,9 +1308,30 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
             transitionTo('S2');
             return;
         }
+
+        switch (action_id) {
+            case 'resolve_mock':
+                resolveBlocker('blocker_s8_01', 'Mock the service response (Standard)');
+                break;
+            case 'resolve_manual':
+                resolveBlocker('blocker_s8_01', 'Map as Manual Task');
+                break;
+            case 'resolve_wait':
+                resolveBlocker('blocker_s8_01', 'Wait for developer input');
+                break;
+            case 'open_inbox':
+                // handle inbox?
+                break;
+            // ... other actions
+        }
+
         console.log('Action triggered:', action_id);
-        // ... handled by transitionTo usually if direct link
-        // if generic action logic needed, add here
+
+        // Expert Controls overrides
+        if (action_id === 'set_override_type' && params?.id) {
+            // Logic for expert controls (existing?) implementation
+            // For now we just logged it
+        }
     };
 
     // Initialize S0
@@ -1182,7 +1340,7 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
     }, []);
 
     return (
-        <DemoContext.Provider value={{ currentState, chatHistory, currentCanvas, mission, handleAction, handleUserMessage, transitionTo, currentTask, isTyping, typingLabel, expertOutputs, handleExpertAction, blockers, resolveBlocker }}>
+        <DemoContext.Provider value={{ currentState, chatHistory, currentCanvas, mission, handleAction, handleUserMessage, transitionTo, currentTask, tasksHistory, isTyping, typingLabel, expertOutputs, handleExpertAction, blockers, resolveBlocker }}>
             {children}
         </DemoContext.Provider>
     );

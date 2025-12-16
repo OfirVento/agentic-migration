@@ -13,7 +13,7 @@ import { ReplayProgress } from './ReplayProgress';
 import { DiffViewer } from './DiffViewer';
 import { RunTimeline } from './RunTimeline';
 import { RunSummary } from './RunSummary';
-// Will add more as we build them
+import FitGapAnalysis from './FitGapAnalysis';
 
 export const CanvasRegistry = () => {
     const { currentCanvas } = useDemo();
@@ -34,6 +34,7 @@ export const CanvasRegistry = () => {
         case 'diff_viewer': return <DiffViewer />;
         case 'run_timeline': return <RunTimeline />;
         case 'run_summary': return <RunSummary />;
+        case 'fit_gap_analysis': return <FitGapAnalysis />;
 
         // Fallback for not-yet-implemented modules to avoid crash
         default: return (

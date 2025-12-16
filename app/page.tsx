@@ -163,7 +163,7 @@ const ChatInput = () => {
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask Gemini (e.g., 'Why is Volume Discount complex?')"
+          placeholder="Ask Anything"
           className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pr-12 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all"
           disabled={isTyping}
         />
@@ -183,7 +183,7 @@ const ChatInput = () => {
 };
 
 const ChatArea = () => {
-  const { chatHistory, isTyping, transitionTo, currentTask, typingLabel } = useDemo();
+  const { chatHistory, isTyping, transitionTo, currentTask, tasksHistory, typingLabel, handleAction } = useDemo();
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -218,6 +218,13 @@ const ChatArea = () => {
           {msg.content}
         </div>
 
+        {/* INLINE TASK CARD */}
+        {msg.meta?.taskId && tasksHistory?.[msg.meta.taskId] && (
+          <div className="mt-4 w-full">
+            <TaskCard task={tasksHistory[msg.meta.taskId]} />
+          </div>
+        )}
+
         {msg.actions && (
           <div className="flex flex-wrap gap-2 mt-3 w-full">
             {msg.actions.map((action, idx) => (
@@ -226,8 +233,10 @@ const ChatArea = () => {
                 onClick={() => {
                   if (action.next_state) {
                     transitionTo(action.next_state);
+                  } else if (action.action_id) {
+                    handleAction(action.action_id);
                   } else if (action.effect === 'toast') {
-                    // Show a toast/alert for non-navigation actions
+                    // Fallback
                     alert(`${action.label} - This feature is coming soon!`);
                   }
                 }}
@@ -251,8 +260,10 @@ const ChatArea = () => {
         {/* 1. Render all messages */}
         {chatHistory.map(renderMessage)}
 
-        {/* 2. Render the Active Task Card at the bottom */}
-        {currentTask && <TaskCard task={currentTask} />}
+        {/* 2. Render the Active Task Card at the bottom ONLY if it is NOT already rendered inline */}
+        {currentTask && !chatHistory.some(m => m.meta?.taskId === currentTask.id) && (
+          <TaskCard task={currentTask} />
+        )}
 
         {isTyping && <ThinkingBubble label={typingLabel || "Thinking..."} />}
         <div ref={bottomRef} />
