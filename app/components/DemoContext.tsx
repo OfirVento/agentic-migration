@@ -114,6 +114,7 @@ interface DemoContextType {
     handleUserMessage: (text: string) => void;
     transitionTo: (newState: string) => void;
     currentTask: AgentTask | null;
+    setCurrentCanvas: (canvas: CanvasState | null) => void;
     isTyping: boolean;
     typingLabel: string | null;
     expertOutputs: { id: string, title: string, time: string }[];
@@ -198,6 +199,7 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
 
     // Expert Action Handler
     const handleExpertAction = (action: string) => {
+        console.log("Expert action triggered:", action);
         setIsTyping(true);
         setTimeout(() => {
             setIsTyping(false);
@@ -226,11 +228,29 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
                     newOutput = { id: Date.now().toString(), title: "Diff Analysis – 3 Changes Found", time: "Just now" };
                     successMsg = "Analysis complete. 3 changes detected.";
                     break;
+                case 'generate_logic_decoder':
+                    newOutput = { id: Date.now().toString(), title: "Logic Decoder – Volume Discount", time: "Just now" };
+                    successMsg = "Logic Decoder generated.";
+                    break;
             }
 
             if (newOutput) {
                 setExpertOutputs(prev => [newOutput!, ...prev]);
-                // Optional: Add a toast system or log to chat
+
+                // For Logic Decoder, we also update the Canvas
+                if (action === 'generate_logic_decoder') {
+                    setCurrentCanvas({
+                        type: 'logic_decoder',
+                        title: 'Logic Decoder – Volume Discount',
+                        data: {
+                            legacyCode: `export function onBeforePriceRules(quote, lineModels) {\n  const quantity = lineModels[0].record.SBQQ__Quantity__c;\n  if (quantity > 100) {\n    lineModels[0].record.SBQQ__Discount__c = 15;\n  } else if (quantity > 50) {\n    lineModels[0].record.SBQQ__Discount__c = 10;\n  }\n  return Promise.resolve();\n}`,
+                            rcaLogic: `{\n  "version": "1.0",\n  "name": "VolumeDiscountProcedure",\n  "steps": [\n    {\n      "type": "Expression",\n      "logic": "IF(Quantity > 100, 0.15, IF(Quantity > 50, 0.10, 0))"\n    }\n  ]\n}`,
+                            title: 'Volume Discount Logic',
+                            description: 'Converting legacy QCP script to native RCA Pricing Procedure'
+                        }
+                    });
+                }
+
                 console.log(successMsg);
             }
         }, 1500);
@@ -524,7 +544,7 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
                     }
                 ]);
 
-                setCurrentCanvas({
+                /* setCurrentCanvas({
                     type: "scan_scope",
                     title: "Connect & Scan",
                     data: {
@@ -540,7 +560,7 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
                         ],
                         note: "We’ll introduce RCA objects only after Phase 1 scope is set."
                     }
-                });
+                }); */
                 break;
 
             case 'S1': // Scan Scope - Scanner Intro
@@ -1340,7 +1360,7 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
     }, []);
 
     return (
-        <DemoContext.Provider value={{ currentState, chatHistory, currentCanvas, mission, handleAction, handleUserMessage, transitionTo, currentTask, tasksHistory, isTyping, typingLabel, expertOutputs, handleExpertAction, blockers, resolveBlocker }}>
+        <DemoContext.Provider value={{ currentState, chatHistory, currentCanvas, mission, handleAction, handleUserMessage, transitionTo, currentTask, tasksHistory, isTyping, typingLabel, expertOutputs, handleExpertAction, blockers, resolveBlocker, setCurrentCanvas }}>
             {children}
         </DemoContext.Provider>
     );

@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useDemo } from './DemoContext';
 import { ChevronRight, CheckCircle2, Loader2, AlertCircle, Info, Search, GitCompare, Code2, CalendarClock, PlayCircle, ShieldCheck, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -151,8 +152,8 @@ export const MissionBar = () => {
                 </div>
                 <div className="h-6 w-px bg-gray-200 mx-2" />
                 <div className="flex gap-4 text-sm font-medium">
-                    <a href="/" className="text-gray-500 hover:text-blue-600 transition-colors">Migration</a>
-                    <a href="/expert" className="text-gray-500 hover:text-blue-600 transition-colors">Expert Tools</a>
+                    <Link href="/" className="text-gray-500 hover:text-blue-600 transition-colors">Migration</Link>
+                    <Link href="/expert" className="text-gray-500 hover:text-blue-600 transition-colors">Expert Tools</Link>
                 </div>
             </div>
 

@@ -14,6 +14,7 @@ import { DiffViewer } from './DiffViewer';
 import { RunTimeline } from './RunTimeline';
 import { RunSummary } from './RunSummary';
 import FitGapAnalysis from './FitGapAnalysis';
+import { LogicDecoder } from './LogicDecoder';
 
 export const CanvasRegistry = () => {
     const { currentCanvas } = useDemo();
@@ -35,6 +36,16 @@ export const CanvasRegistry = () => {
         case 'run_timeline': return <RunTimeline />;
         case 'run_summary': return <RunSummary />;
         case 'fit_gap_analysis': return <FitGapAnalysis />;
+        case 'logic_decoder': return (
+            <div className="p-8 bg-gray-50/50 h-full overflow-y-auto">
+                <LogicDecoder
+                    legacyCode={currentCanvas.data.legacyCode}
+                    rcaLogic={currentCanvas.data.rcaLogic}
+                    title={currentCanvas.data.title}
+                    description={currentCanvas.data.description}
+                />
+            </div>
+        );
 
         // Fallback for not-yet-implemented modules to avoid crash
         default: return (

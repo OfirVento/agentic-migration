@@ -41,7 +41,7 @@ export const AppShell = ({ chat, canvas, children, title, subtitle }: AppShellPr
 
             <div className="flex flex-1 overflow-hidden">
                 {children ? (
-                    <div className="flex-1 overflow-hidden p-8">
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
                         {children}
                     </div>
                 ) : (
