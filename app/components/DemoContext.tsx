@@ -136,7 +136,23 @@ const INITIAL_MISSION: MissionState = {
 
 const INITIAL_STATE = {
     chatHistory: [],
-    currentCanvas: { type: 'scan_scope', title: 'CPQ Inventory Scan', data: null },
+    currentCanvas: {
+        type: "scan_scope",
+        title: "Connect & Scan",
+        data: {
+            connection_status: "Connected to Salesforce — Read-only scan mode",
+            window: "Last 90 days",
+            scope: [
+                { name: "Quotes + Quote Lines", enabled: true },
+                { name: "Products + Price Books", enabled: true },
+                { name: "Bundles + Options", enabled: true },
+                { name: "Pricing (Price Rules, Discount Schedules)", enabled: true },
+                { name: "Approvals", enabled: true },
+                { name: "Quote Documents/Templates", enabled: true }
+            ],
+            note: "We’ll introduce RCA objects only after Phase 1 scope is set."
+        }
+    },
     mission: INITIAL_MISSION
 };
 
@@ -544,7 +560,7 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
                     }
                 ]);
 
-                /* setCurrentCanvas({
+                setCurrentCanvas({
                     type: "scan_scope",
                     title: "Connect & Scan",
                     data: {
@@ -560,7 +576,7 @@ export const DemoProvider = ({ children }: { children: ReactNode }) => {
                         ],
                         note: "We’ll introduce RCA objects only after Phase 1 scope is set."
                     }
-                }); */
+                });
                 break;
 
             case 'S1': // Scan Scope - Scanner Intro
